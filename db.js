@@ -21,6 +21,13 @@ const User = conn.define("user", {
   password: STRING,
 });
 
+const Note = conn.define("note", {
+  text: STRING,
+});
+
+User.hasMany(Note);
+Note.belongsTo(User);
+
 User.byToken = async (token) => {
   try {
     const decoded = jwt.verify(token, jwtToken);
@@ -47,7 +54,7 @@ User.authenticate = async ({ username, password }) => {
   const compare = await bcrypt.compare(password, user.password);
   if (user && compare) {
     const payload = { userId: user.id };
-    const signed = jwt.sign(payload, jwtToken, { algorithm: "HS256" });
+    const signed = jwt.sign(payload, jwtToken);
     return signed;
   }
   const error = Error("bad credentials");
@@ -62,9 +69,20 @@ const syncAndSeed = async () => {
     { username: "moe", password: "moe_pw" },
     { username: "larry", password: "larry_pw" },
   ];
+  const notes = [
+    { text: "hello world" },
+    { text: "reminder to buy groceries" },
+    { text: "reminder to do laundry" },
+  ];
   const [lucy, moe, larry] = await Promise.all(
     credentials.map((credential) => User.create(credential))
   );
+  const [note1, note2, note3] = await Promise.all(
+    notes.map((note) => Note.create(note))
+  );
+  await lucy.setNotes(note1);
+  await moe.setNotes([note2]);
+  await larry.setNotes([note3]);
   return {
     users: {
       lucy,
@@ -91,5 +109,6 @@ module.exports = {
   syncAndSeed,
   models: {
     User,
+    Note,
   },
 };
